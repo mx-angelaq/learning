@@ -1,7 +1,9 @@
-# Simple command-line todo list manager
+#!/usr/bin/env python3
+"""Simple command-line todo list manager."""
 
 import argparse
 from pathlib import Path
+from typing import List
 
 TASKS_FILE = Path(__file__).resolve().parent.parent / "tasks.txt"
 
@@ -12,7 +14,7 @@ def add_task(description: str) -> None:
         f.write(description.strip() + "\n")
 
 
-def list_tasks() -> list[str]:
+def list_tasks() -> List[str]:
     """Return the list of tasks from the tasks file."""
     if not TASKS_FILE.exists():
         return []

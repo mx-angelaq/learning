@@ -20,7 +20,7 @@ python src/calculator.py 3 5 -o add
 
 No additional dependencies are required since the script only uses Python's standard library.
 
-## Managing your todo list
+## Todo List
 
 A small helper script `src/todo.py` lets you keep track of tasks in a file called `tasks.txt` at the repository root.
 Use it to add new items or display the current list:
