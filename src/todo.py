@@ -1,49 +1,83 @@
-#!/usr/bin/env python3
-"""Simple command-line todo list manager."""
-
 import argparse
+import json
 from pathlib import Path
-from typing import List
-
-TASKS_FILE = Path(__file__).resolve().parent.parent / "tasks.txt"
 
 
-def add_task(description: str) -> None:
-    """Append a task description to the tasks file."""
-    with open(TASKS_FILE, "a", encoding="utf-8") as f:
-        f.write(description.strip() + "\n")
+class ToDoList:
+    """Simple to-do list manager backed by a JSON file."""
 
+    def __init__(self, path: Path | None = None):
+        self.path = path or Path(__file__).resolve().parent.parent / "todo_data.json"
+        self.tasks: list[dict] = []
+        self.load()
 
-def list_tasks() -> List[str]:
-    """Return the list of tasks from the tasks file."""
-    if not TASKS_FILE.exists():
-        return []
-    with open(TASKS_FILE, "r", encoding="utf-8") as f:
-        return [line.strip() for line in f if line.strip()]
+    def load(self) -> None:
+        """Load tasks from the JSON file."""
+        if self.path.exists():
+            try:
+                with self.path.open("r", encoding="utf-8") as f:
+                    self.tasks = json.load(f)
+            except json.JSONDecodeError:
+                self.tasks = []
+        else:
+            self.tasks = []
+
+    def save(self) -> None:
+        """Save tasks to the JSON file."""
+        with self.path.open("w", encoding="utf-8") as f:
+            json.dump(self.tasks, f, indent=2)
+
+    def add_task(self, text: str) -> None:
+        """Add a new task with the given text."""
+        self.tasks.append({"text": text, "completed": False})
+        self.save()
+
+    def complete_task(self, index: int) -> None:
+        """Mark the task at the given index (0-based) as completed."""
+        if 0 <= index < len(self.tasks):
+            self.tasks[index]["completed"] = True
+            self.save()
+        else:
+            raise IndexError("Task index out of range")
+
+    def list_tasks(self) -> list[dict]:
+        """Return the list of tasks."""
+        return self.tasks
 
 
 def main() -> None:
-    """Handle command-line arguments for adding and listing tasks."""
-    parser = argparse.ArgumentParser(description="Simple todo list manager")
+    parser = argparse.ArgumentParser(description="Simple command-line to-do list")
     subparsers = parser.add_subparsers(dest="command")
 
     add_parser = subparsers.add_parser("add", help="Add a new task")
-    add_parser.add_argument("description", help="task description")
+    add_parser.add_argument("text", help="Task description")
 
-    subparsers.add_parser("list", help="List existing tasks")
+    subparsers.add_parser("list", help="List tasks")
+
+    done_parser = subparsers.add_parser("done", help="Mark a task as completed")
+    done_parser.add_argument("index", type=int, help="Task number as shown in the list")
 
     args = parser.parse_args()
 
+    todo = ToDoList()
+
     if args.command == "add":
-        add_task(args.description)
-        print("Task added.")
+        todo.add_task(args.text)
+        print(f'Added task: {args.text}')
     elif args.command == "list":
-        tasks = list_tasks()
+        tasks = todo.list_tasks()
         if not tasks:
             print("No tasks found.")
         else:
-            for idx, task in enumerate(tasks, 1):
-                print(f"{idx}. {task}")
+            for i, task in enumerate(tasks, start=1):
+                mark = "[x]" if task.get("completed") else "[ ]"
+                print(f"{i}. {mark} {task.get('text')}")
+    elif args.command == "done":
+        try:
+            todo.complete_task(args.index - 1)
+            print(f"Completed task #{args.index}")
+        except IndexError:
+            print("Invalid task number")
     else:
         parser.print_help()
 
