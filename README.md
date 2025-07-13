@@ -19,3 +19,13 @@ python src/calculator.py 3 5 -o add
 ```
 
 No additional dependencies are required since the script only uses Python's standard library.
+
+## Running tests
+
+This repository uses `pytest` for unit testing. Install `pytest` and run the test suite with:
+
+```bash
+pip install pytest
+pytest
+```
+
