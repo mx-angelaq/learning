@@ -23,7 +23,7 @@ embeddings = OpenAIEmbeddings(
     model="text-embedding-3-small",
 )
 
-pdf_path = r"C:\Users\Angela\Downloads\Stock_Market_Performance_2024.pdf"
+pdf_path = os.path.expanduser("~/Downloads/Stock_Market_Performance_2024.pdf")
 
 # Safety measure for debugging purposes
 if not os.path.exists(pdf_path):
@@ -48,7 +48,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 pages_split = text_splitter.split_documents(pages) # Apply this to  pages (split into chunks)
 
-persist_directory = r"C:\Users\Angela\OneDrive - Aqore\Desktop\LearningLangGraph"
+persist_directory = os.path.join(os.getcwd(), "chroma_db")
 collection_name = "stock_market"
 
 # If our collection does not exist in the directory, we create using the os command
@@ -104,11 +104,11 @@ def should_continue(state: AgentState):
     return hasattr(result, "tool_calls") and len(result.tool_calls) > 0
 
 system_prompt = """
-You are an intelligent AI assistant who answers questions about Stock Market Performance in 2024 based on the document loaded into your knowledgebase. 
+You are an intelligent AI assistant who answers questions about Stock Market Performance in 2024 based on the document loaded into your knowledgebase.
 Use the retriever tool available to answer questions about stock market performance data.
 You can make multiple calls if needed. If you need to look up some information before
-asking a follow up questione, you are allowed to do that. Please always cite the specific
-parts of the documents you use in your answers. 
+asking a follow up question, you are allowed to do that. Please always cite the specific
+parts of the documents you use in your answers.
   """
 tools_dict = {our_tool.name: our_tool for our_tool in tools} # create a dictionary of tools
 
@@ -126,17 +126,16 @@ def take_action(state: AgentState) -> AgentState:
     tool_calls = state["messages"][-1].tool_calls
     results = []
     for t in tool_calls:
-        print(f"Callng tool: {t['name']} with query:{t['args'].get('query', 'no query provided')}")
+        print(f"Calling tool: {t['name']} with query:{t['args'].get('query', 'no query provided')}")
         if not t['name'] in tools_dict: # checks if a valid tool is present
-            print(f"\Tool: {t['name']} not found!")
+            print(f"\nTool: {t['name']} not found!")
             result = "Incorrect tool name, please retry and select tool from list of available tools."
-
         else:
             result = tools_dict[t['name']].invoke(t['args'].get('query', ''))
             print(f" result length: {len(str(result))}")
 
-    #appends the tool message
-    results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
+        # Append the tool message (MUST be inside the loop)
+        results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
     return {'messages': results}
 
 graph = StateGraph(AgentState)
