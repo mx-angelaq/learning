@@ -23,6 +23,20 @@ const CFG = {
 };
 
 function onOpen() {
+  if (!canUseSpreadsheetUi_()) {
+    return;
+  }
+  buildTournamentMenu_();
+}
+
+function installMenu() {
+  if (!canUseSpreadsheetUi_()) {
+    throw new Error('Menu requires a spreadsheet-bound script. Open the linked Google Sheet and run this there.');
+  }
+  buildTournamentMenu_();
+}
+
+function buildTournamentMenu_() {
   SpreadsheetApp.getUi()
     .createMenu('Tournament')
     .addItem('1) Setup / Repair Sheets', 'setupTournamentSheets')
@@ -33,6 +47,15 @@ function onOpen() {
     .addSeparator()
     .addItem('Advance Winners (auto propagate)', 'advanceBracket')
     .addToUi();
+}
+
+function canUseSpreadsheetUi_() {
+  try {
+    SpreadsheetApp.getUi();
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 function setupTournamentSheets() {

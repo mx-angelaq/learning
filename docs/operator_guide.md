@@ -3,8 +3,10 @@
 ## 1) One-time setup
 1. Open the Google Sheet bound to Apps Script.
 2. Paste `src/kickboxing_tournament_app.gs` into the Script Editor.
-3. Run `setupTournamentSheets` once.
-4. Confirm sheets exist: `Registrations`, `Matches`, `Bouts`, `Display`, `Config`.
+3. Do **not** run `onOpen` directly from the editor. It only works inside a spreadsheet UI context.
+4. Run `installMenu` once (or just reload the spreadsheet tab).
+5. Run `setupTournamentSheets` once.
+6. Confirm sheets exist: `Registrations`, `Matches`, `Bouts`, `Display`, `Config`.
 
 ## 2) Registration workflow
 1. Keep form responses in `Form Responses 1`.
