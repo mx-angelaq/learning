@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Hosted mode: uses PostgreSQL
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kickboxing
+      POSTGRES_USER: kickboxing
+      POSTGRES_PASSWORD: kickboxing_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - APP_MODE=hosted
+      - DATABASE_URL=postgresql://kickboxing:kickboxing_secret@db:5432/kickboxing
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - STAFF_PASSWORD=${STAFF_PASSWORD:-staff123}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - CORS_ORIGINS=*
+    command: >
+      sh -c "sleep 3 && cd /app && python seed_data.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
