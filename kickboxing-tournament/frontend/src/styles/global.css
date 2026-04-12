@@ -166,6 +166,9 @@ tr:hover { background: #f8fafc; }
 .badge-withdrawn { background: #fef3c7; color: #92400e; }
 .badge-disqualified { background: #fee2e2; color: #991b1b; }
 .badge-no_show { background: #fed7aa; color: #9a3412; }
+.badge-pending { background: #fef3c7; color: #92400e; }
+.badge-approved { background: #dcfce7; color: #166534; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
 
 /* Bracket visualization */
 .bracket-container {

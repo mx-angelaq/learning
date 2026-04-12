@@ -38,6 +38,7 @@ class TournamentCreate(BaseModel):
     substitution_cutoff_round: int = Field(ge=1, default=1)
     no_show_policy: str = Field(default="walkover")
     weight_presets: Optional[List[WeightPreset]] = None
+    registration_open: bool = False
 
 
 class TournamentUpdate(BaseModel):
@@ -53,6 +54,7 @@ class TournamentUpdate(BaseModel):
     substitution_cutoff_round: Optional[int] = None
     no_show_policy: Optional[str] = None
     weight_presets: Optional[List[WeightPreset]] = None
+    registration_open: Optional[bool] = None
 
 
 class TournamentResponse(BaseModel):
@@ -69,6 +71,7 @@ class TournamentResponse(BaseModel):
     substitution_cutoff_round: int
     no_show_policy: str
     weight_presets: Optional[list] = None
+    registration_open: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -263,3 +266,61 @@ class SyncStatusResponse(BaseModel):
     last_sync: Optional[datetime] = None
     status: str
     records_synced: int = 0
+
+
+# --- Registration (self-signup) ---
+
+class RegistrationSubmit(BaseModel):
+    """Public-facing registration form submission."""
+    full_name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=3, max_length=200)
+    division_id: int
+    declared_weight: Optional[float] = None
+    gym_team: Optional[str] = Field(default=None, max_length=200)
+    phone: Optional[str] = Field(default=None, max_length=50)
+    age: Optional[int] = Field(default=None, ge=5, le=99)
+    experience_level: Optional[str] = None
+    waiver_agreed: bool = False
+
+    @field_validator("full_name")
+    @classmethod
+    def reg_name_not_blank(cls, v):
+        if not v.strip():
+            raise ValueError("Full name cannot be blank")
+        return v.strip()
+
+    @field_validator("email")
+    @classmethod
+    def email_basic_check(cls, v):
+        v = v.strip().lower()
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Please enter a valid email address")
+        return v
+
+
+class RegistrationResponse(BaseModel):
+    id: int
+    tournament_id: int
+    division_id: int
+    full_name: str
+    email: str
+    declared_weight: Optional[float] = None
+    gym_team: Optional[str] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    experience_level: Optional[str] = None
+    waiver_agreed: bool
+    status: str
+    admin_notes: Optional[str] = None
+    competitor_id: Optional[int] = None
+    division_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RegistrationReview(BaseModel):
+    """Admin action on a pending registration."""
+    action: str = Field(pattern="^(approve|reject)$")
+    admin_notes: Optional[str] = None

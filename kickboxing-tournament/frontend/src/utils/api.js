@@ -152,6 +152,21 @@ const api = {
       method: 'POST',
       body: JSON.stringify({ target_url: targetUrl, api_key: apiKey }),
     }),
+
+  // Registration (self-signup)
+  submitRegistration: (tid, data) =>
+    apiFetch(`/tournaments/${tid}/registrations`, {
+      method: 'POST', body: JSON.stringify(data),
+    }),
+  checkRegistration: (tid, email) =>
+    apiFetch(`/tournaments/${tid}/registrations/check?email=${encodeURIComponent(email)}`),
+  getRegistrations: (tid, status) =>
+    apiFetch(`/tournaments/${tid}/registrations${status ? `?status=${status}` : ''}`),
+  reviewRegistration: (tid, rid, action, adminNotes) =>
+    apiFetch(`/tournaments/${tid}/registrations/${rid}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, admin_notes: adminNotes || null }),
+    }),
 };
 
 export default api;

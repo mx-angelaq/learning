@@ -54,6 +54,7 @@ def create_tournament(data: TournamentCreate, db: Session = Depends(get_db),
         no_show_policy=data.no_show_policy,
         weight_presets=([p.model_dump() for p in data.weight_presets]
                         if data.weight_presets else DEFAULT_WEIGHT_PRESETS),
+        registration_open=data.registration_open,
     )
     db.add(t)
     db.commit()

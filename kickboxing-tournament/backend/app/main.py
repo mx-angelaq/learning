@@ -9,7 +9,8 @@ from app.config import settings
 from app.database import init_db
 from app.routers import (
     auth, tournaments, divisions, competitors,
-    brackets, scheduling, audit, sync_routes, events
+    brackets, scheduling, audit, sync_routes, events,
+    registrations
 )
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(scheduling.router)
 app.include_router(audit.router)
 app.include_router(sync_routes.router)
 app.include_router(events.router)
+app.include_router(registrations.router)
 
 
 @app.on_event("startup")

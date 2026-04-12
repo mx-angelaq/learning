@@ -36,6 +36,12 @@ class CompetitorStatus(str, enum.Enum):
     NO_SHOW = "no_show"
 
 
+class RegistrationStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class NoShowPolicy(str, enum.Enum):
     WALKOVER = "walkover"
     DQ = "dq"
@@ -60,11 +66,13 @@ class Tournament(Base):
     substitution_cutoff_round = Column(Integer, default=1)  # After this round, no subs
     no_show_policy = Column(Enum(NoShowPolicy), default=NoShowPolicy.WALKOVER)
     weight_presets = Column(JSON, nullable=True)  # Custom weight class presets
+    registration_open = Column(Boolean, default=False)  # Public self-registration toggle
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     divisions = relationship("Division", back_populates="tournament", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="tournament", cascade="all, delete-orphan")
+    registrations = relationship("Registration", back_populates="tournament", cascade="all, delete-orphan")
 
 
 # --- Division ---
@@ -139,6 +147,33 @@ class Match(Base):
     competitor2 = relationship("Competitor", foreign_keys=[competitor2_id])
     winner = relationship("Competitor", foreign_keys=[winner_id])
     next_match = relationship("Match", remote_side=[id], foreign_keys=[next_match_id])
+
+
+# --- Registration (self-signup) ---
+
+class Registration(Base):
+    __tablename__ = "registrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tournament_id = Column(Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=False)
+    division_id = Column(Integer, ForeignKey("divisions.id", ondelete="CASCADE"), nullable=False)
+    full_name = Column(String(200), nullable=False)
+    email = Column(String(200), nullable=False)
+    declared_weight = Column(Float, nullable=True)
+    gym_team = Column(String(200), nullable=True)
+    phone = Column(String(50), nullable=True)
+    age = Column(Integer, nullable=True)
+    experience_level = Column(String(50), nullable=True)
+    waiver_agreed = Column(Boolean, default=False)
+    status = Column(Enum(RegistrationStatus), default=RegistrationStatus.PENDING)
+    admin_notes = Column(Text, nullable=True)
+    competitor_id = Column(Integer, ForeignKey("competitors.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    tournament = relationship("Tournament", back_populates="registrations")
+    division = relationship("Division")
+    competitor = relationship("Competitor")
 
 
 # --- Audit Log ---

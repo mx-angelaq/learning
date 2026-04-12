@@ -5,6 +5,7 @@ import TournamentList from './pages/TournamentList';
 import TournamentView from './pages/TournamentView';
 import DivisionView from './pages/DivisionView';
 import PublicView from './pages/PublicView';
+import RegisterPage from './pages/RegisterPage';
 import LoginModal from './components/LoginModal';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/tournament/:id" element={<TournamentView isAdmin={isAdmin} isStaff={isStaff} />} />
           <Route path="/tournament/:tid/division/:did" element={<DivisionView isAdmin={isAdmin} isStaff={isStaff} />} />
           <Route path="/public/:id" element={<PublicView />} />
+          <Route path="/register/:id" element={<RegisterPage />} />
         </Routes>
       </div>
 

@@ -66,6 +66,7 @@ export default function TournamentView({ isAdmin, isStaff }) {
           </p>
         </div>
         <div className="flex gap-sm">
+          <Link to={`/register/${id}`} className="btn btn-sm btn-success">Registration Link</Link>
           <Link to={`/public/${id}`} className="btn btn-sm btn-outline">Public View</Link>
         </div>
       </div>
@@ -73,7 +74,7 @@ export default function TournamentView({ isAdmin, isStaff }) {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="tabs">
-        {['divisions', 'schedule', 'audit'].map(t => (
+        {['divisions', ...(isAdmin ? ['registrations'] : []), 'schedule', 'audit'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`}
             onClick={() => setTab(t)}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -123,6 +124,10 @@ export default function TournamentView({ isAdmin, isStaff }) {
             />
           )}
         </div>
+      )}
+
+      {tab === 'registrations' && isAdmin && (
+        <RegistrationsTab tournamentId={id} tournament={tournament} onRefresh={load} />
       )}
 
       {tab === 'schedule' && (
@@ -313,6 +318,111 @@ function ScheduleTab({ tournamentId, tournament, schedule, isStaff, onRefresh })
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function RegistrationsTab({ tournamentId, tournament, onRefresh }) {
+  const [registrations, setRegistrations] = useState([]);
+  const [filter, setFilter] = useState('pending');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [reviewNotes, setReviewNotes] = useState({});
+
+  const loadRegs = async () => {
+    try {
+      const data = await api.getRegistrations(tournamentId, filter === 'all' ? '' : filter);
+      setRegistrations(data);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  useEffect(() => { loadRegs(); }, [filter]);
+
+  const handleReview = async (regId, action) => {
+    setError('');
+    setSuccess('');
+    try {
+      await api.reviewRegistration(tournamentId, regId, action, reviewNotes[regId] || '');
+      setSuccess(`Registration ${action === 'approve' ? 'approved' : 'rejected'}.`);
+      loadRegs();
+      if (action === 'approve') onRefresh();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const pendingCount = registrations.filter(r => r.status === 'pending').length;
+
+  return (
+    <div>
+      <div className="flex-between mb-1 flex-wrap gap-sm">
+        <h3>Registrations {filter === 'pending' && pendingCount > 0 && `(${pendingCount} pending)`}</h3>
+        <div className="flex gap-sm">
+          {['pending', 'approved', 'rejected', 'all'].map(f => (
+            <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setFilter(f)}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success">{success}</div>}
+
+      {registrations.length === 0 ? (
+        <div className="card text-center text-light" style={{ padding: '2rem' }}>
+          No {filter !== 'all' ? filter : ''} registrations.
+          {!tournament.registration_open && (
+            <p className="mt-1">Registration is currently closed. Enable it in tournament settings.</p>
+          )}
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th><th>Email</th><th>Division</th><th>Weight</th>
+                <th>Gym</th><th>Status</th><th>Submitted</th>
+                {filter === 'pending' && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {registrations.map(r => (
+                <tr key={r.id}>
+                  <td>{r.full_name}</td>
+                  <td className="text-sm">{r.email}</td>
+                  <td>{r.division_name || `Division #${r.division_id}`}</td>
+                  <td>{r.declared_weight ? `${r.declared_weight} kg` : '-'}</td>
+                  <td>{r.gym_team || '-'}</td>
+                  <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
+                  <td className="text-sm">{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>
+                  {filter === 'pending' && (
+                    <td>
+                      <div className="flex gap-sm" style={{ alignItems: 'center' }}>
+                        <input
+                          placeholder="Notes"
+                          value={reviewNotes[r.id] || ''}
+                          onChange={e => setReviewNotes({ ...reviewNotes, [r.id]: e.target.value })}
+                          style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                        />
+                        <button className="btn btn-sm btn-success" onClick={() => handleReview(r.id, 'approve')}>
+                          Approve
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleReview(r.id, 'reject')}>
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

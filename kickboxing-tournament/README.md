@@ -99,6 +99,69 @@ docker compose -f docker-compose.hosted.yml up --build
 4. Add environment variables (see above)
 5. For frontend: deploy as a Static Site from `frontend/` with `npm run build`
 
+## Self-Registration
+
+Competitors can register themselves via a public web form, removing the need for admin manual data entry.
+
+### How it works
+
+1. **Admin enables registration**: Set `registration_open: true` on the tournament (via API or creation form)
+2. **Share the link**: `https://yourdomain.com/register/{tournament_id}`
+3. **Competitor fills out the form**: name, email, division, weight, gym, waiver agreement
+4. **Registration is saved as "pending"**
+5. **Admin reviews** in the "Registrations" tab on the tournament management page
+6. **Approve** creates a real `Competitor` record in the selected division (same code path as manual admin creation)
+7. **Reject** marks the registration as rejected (competitor can re-register)
+
+### Registration API endpoints
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `POST /api/tournaments/{id}/registrations` | Public | Submit registration |
+| `GET /api/tournaments/{id}/registrations/check?email=...` | Public | Check status by email |
+| `GET /api/tournaments/{id}/registrations` | Admin | List all (filterable by `?status=pending`) |
+| `POST /api/tournaments/{id}/registrations/{rid}/review` | Admin | Approve or reject |
+
+### Duplicate prevention
+
+Duplicate registrations are prevented by email per tournament. A rejected registration allows the email to re-register.
+
+### Discord webhook (optional)
+
+Set `DISCORD_WEBHOOK_URL` environment variable to receive notifications in a Discord channel when someone registers.
+
+```
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+### Environment variables for registration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_WEBHOOK_URL` | No | Discord webhook for registration notifications |
+
+### Manual test (curl)
+
+```bash
+# Submit a registration (no auth needed)
+curl -X POST http://localhost:8000/api/tournaments/1/registrations \
+  -H "Content-Type: application/json" \
+  -d '{"full_name":"Test Fighter","email":"test@example.com","division_id":1,"declared_weight":68.5,"waiver_agreed":true}'
+
+# Check status
+curl http://localhost:8000/api/tournaments/1/registrations/check?email=test@example.com
+
+# Admin: list pending
+curl http://localhost:8000/api/tournaments/1/registrations?status=pending \
+  -H "Authorization: Bearer <admin_token>"
+
+# Admin: approve
+curl -X POST http://localhost:8000/api/tournaments/1/registrations/1/review \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin_token>" \
+  -d '{"action":"approve","admin_notes":"Verified weight"}'
+```
+
 ## Sync Strategy
 
 **Local is source of truth.** The local instance running at the venue holds the authoritative data.
@@ -136,6 +199,8 @@ This avoids complex conflict resolution. The venue laptop always wins.
 | Handle chaos (withdrawal/sub) | ✓ | ✗ | ✗ |
 | View brackets & results | ✓ | ✓ | ✓ |
 | View audit log | ✓ | ✓ | ✓ |
+| Self-register as competitor | - | - | ✓ |
+| Review registrations | ✓ | ✗ | ✗ |
 
 ### Tournament Setup
 - Name, date, venue, rings, timing
@@ -187,6 +252,15 @@ python -m pytest app/tests/ -v
 | Correction | rollback + re-advance |
 | Scheduling | time estimation |
 | Audit | bracket gen logged, withdrawal logged |
+| Registration submit | happy path, minimal fields, all fields |
+| Registration validation | missing name, invalid email, waiver not agreed, invalid division |
+| Registration closed | blocked when registration_open=false |
+| Duplicate prevention | same email blocked, different tournament ok, rejected can resubmit |
+| Admin approval | creates competitor, reject no competitor, double-approve blocked |
+| Approval auth | admin required, staff/public denied |
+| Approval audit | logged in audit trail |
+| Status check | by email, not found, email normalization |
+| Admin list | filter by status, requires admin |
 | API auth | admin login, staff login, wrong password, public denied |
 | API CRUD | tournaments, divisions, competitors, brackets |
 | Permissions | admin-only actions, staff can record results |
@@ -292,10 +366,12 @@ kickboxing-tournament/
 │       │   ├── scheduling.py
 │       │   ├── audit.py
 │       │   ├── sync_routes.py
-│       │   └── events.py
+│       │   ├── events.py
+│       │   └── registrations.py     # Self-registration + admin review
 │       └── tests/
 │           ├── test_bracket_engine.py
-│           └── test_api.py
+│           ├── test_api.py
+│           └── test_registration.py  # 22 registration tests
 └── frontend/
     ├── Dockerfile
     ├── package.json
