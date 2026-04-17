@@ -1,7 +1,8 @@
 version: '3.8'
 
 services:
-  backend:
+backend:
+    image: ghcr.io/mx-angelaq/kickboxing-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -19,7 +20,8 @@ services:
     command: >
       sh -c "cd /app && python seed_data.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
-  frontend:
+frontend:
+    image: ghcr.io/mx-angelaq/kickboxing-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
