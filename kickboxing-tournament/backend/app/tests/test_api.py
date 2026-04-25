@@ -248,6 +248,74 @@ class TestPublicReadOnly:
         assert resp.status_code == 200
 
 
+class TestTournamentSettings:
+    def _create_tournament(self, client, token):
+        resp = client.post("/api/tournaments", json={
+            "name": "T1", "date": "2026-05-01", "venue": "V1",
+        }, headers=auth_header(token))
+        return resp.json()["id"]
+
+    def test_registration_open_defaults_false(self, client, admin_token):
+        tid = self._create_tournament(client, admin_token)
+        resp = client.get(f"/api/tournaments/{tid}")
+        assert resp.json()["registration_open"] is False
+
+    def test_admin_can_open_registration(self, client, admin_token):
+        tid = self._create_tournament(client, admin_token)
+        resp = client.put(f"/api/tournaments/{tid}",
+                          json={"registration_open": True},
+                          headers=auth_header(admin_token))
+        assert resp.status_code == 200
+        assert resp.json()["registration_open"] is True
+
+    def test_admin_can_close_registration(self, client, admin_token):
+        tid = client.post("/api/tournaments", json={
+            "name": "T1", "date": "2026-05-01", "venue": "V1",
+            "registration_open": True,
+        }, headers=auth_header(admin_token)).json()["id"]
+
+        resp = client.put(f"/api/tournaments/{tid}",
+                          json={"registration_open": False},
+                          headers=auth_header(admin_token))
+        assert resp.status_code == 200
+        assert resp.json()["registration_open"] is False
+
+    def test_setting_persists_after_reload(self, client, admin_token):
+        tid = self._create_tournament(client, admin_token)
+        client.put(f"/api/tournaments/{tid}",
+                   json={"registration_open": True},
+                   headers=auth_header(admin_token))
+        resp = client.get(f"/api/tournaments/{tid}")
+        assert resp.json()["registration_open"] is True
+
+    def test_update_settings_requires_admin(self, client, admin_token, staff_token):
+        tid = self._create_tournament(client, admin_token)
+
+        resp = client.put(f"/api/tournaments/{tid}",
+                          json={"registration_open": True})
+        assert resp.status_code == 403
+
+        resp = client.put(f"/api/tournaments/{tid}",
+                          json={"registration_open": True},
+                          headers=auth_header(staff_token))
+        assert resp.status_code == 403
+
+    def test_update_multiple_settings(self, client, admin_token):
+        tid = self._create_tournament(client, admin_token)
+        resp = client.put(f"/api/tournaments/{tid}", json={
+            "registration_open": True,
+            "name": "Updated Cup",
+            "num_rings": 3,
+            "no_show_policy": "dq",
+        }, headers=auth_header(admin_token))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["registration_open"] is True
+        assert data["name"] == "Updated Cup"
+        assert data["num_rings"] == 3
+        assert data["no_show_policy"] == "dq"
+
+
 class TestHealthCheck:
     def test_health(self, client):
         resp = client.get("/api/health")
