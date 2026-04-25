@@ -277,7 +277,7 @@ class RegistrationSubmit(BaseModel):
     division_id: int
     declared_weight: Optional[float] = None
     gym_team: Optional[str] = Field(default=None, max_length=200)
-    phone: Optional[str] = Field(default=None, max_length=50)
+    phone: str = Field(min_length=1, max_length=50)
     age: Optional[int] = Field(default=None, ge=5, le=99)
     experience_level: Optional[str] = None
     waiver_agreed: bool = False

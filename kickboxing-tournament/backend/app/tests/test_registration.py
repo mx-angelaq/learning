@@ -67,6 +67,7 @@ def _valid_registration(division_id):
         "division_id": division_id,
         "declared_weight": 68.5,
         "gym_team": "Iron Fist MMA",
+        "phone": "555-123-4567",
         "waiver_agreed": True,
     }
 
@@ -96,6 +97,7 @@ class TestRegistrationSubmission:
             "full_name": "Min Fighter",
             "email": "min@example.com",
             "division_id": did,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 200
@@ -159,6 +161,7 @@ class TestRegistrationValidation:
             "full_name": "Test Fighter",
             "email": "test@example.com",
             "division_id": did,
+            "phone": "555-0000",
             "waiver_agreed": False,
         })
         assert resp.status_code == 400
@@ -171,16 +174,30 @@ class TestRegistrationValidation:
             "full_name": "Test Fighter",
             "email": "test@example.com",
             "division_id": 99999,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 400
         assert "division" in resp.json()["detail"].lower()
+
+    def test_missing_phone(self, client, admin_token):
+        tid = _create_tournament(client, admin_token)
+        did = _create_division(client, admin_token, tid)
+
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json={
+            "full_name": "Test Fighter",
+            "email": "test@example.com",
+            "division_id": did,
+            "waiver_agreed": True,
+        })
+        assert resp.status_code == 422
 
     def test_nonexistent_tournament(self, client):
         resp = client.post("/api/tournaments/99999/registrations", json={
             "full_name": "Test",
             "email": "test@example.com",
             "division_id": 1,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 404

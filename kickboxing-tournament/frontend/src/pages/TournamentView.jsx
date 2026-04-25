@@ -399,7 +399,7 @@ function RegistrationsTab({ tournamentId, tournament, onRefresh }) {
                   <td>{r.full_name}</td>
                   <td className="text-sm">{r.email}</td>
                   <td>{r.division_name || `Division #${r.division_id}`}</td>
-                  <td>{r.declared_weight ? `${r.declared_weight} kg` : '-'}</td>
+                  <td>{r.declared_weight ? `${Math.round(r.declared_weight * 2.20462)} lbs` : '-'}</td>
                   <td>{r.gym_team || '-'}</td>
                   <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
                   <td className="text-sm">{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>

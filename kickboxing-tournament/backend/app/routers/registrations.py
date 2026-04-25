@@ -43,7 +43,7 @@ def _send_discord_webhook(registration: Registration, tournament: Tournament, di
                     {"name": "Division", "value": division_name, "inline": True},
                     {"name": "Email", "value": registration.email, "inline": True},
                     {"name": "Gym/Team", "value": registration.gym_team or "N/A", "inline": True},
-                    {"name": "Weight", "value": f"{registration.declared_weight} kg" if registration.declared_weight else "N/A", "inline": True},
+                    {"name": "Weight", "value": f"{round(registration.declared_weight * 2.20462)} lbs" if registration.declared_weight else "N/A", "inline": True},
                     {"name": "Tournament", "value": tournament.name, "inline": False},
                 ],
                 "footer": {"text": f"Registration #{registration.id} - Pending review"},

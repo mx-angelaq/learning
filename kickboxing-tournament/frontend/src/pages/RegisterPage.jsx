@@ -42,7 +42,7 @@ export default function RegisterPage() {
         setTournament(t);
         setDivisions(d);
         if (d.length > 0) {
-          setForm(f => ({ ...f, division_id: d[0].id }));
+          setForm(f => ({ ...f, division_id: String(d[0].id) }));
         }
       } catch (e) {
         setError(e.message);
@@ -61,13 +61,14 @@ export default function RegisterPage() {
     setSuccess('');
     setSubmitting(true);
     try {
+      const weightLbs = form.declared_weight ? parseFloat(form.declared_weight) : null;
       const payload = {
         full_name: form.full_name,
         email: form.email,
         division_id: parseInt(form.division_id),
-        declared_weight: form.declared_weight ? parseFloat(form.declared_weight) : null,
+        declared_weight: weightLbs ? Math.round(weightLbs * 0.453592 * 10) / 10 : null,
         gym_team: form.gym_team || null,
-        phone: form.phone || null,
+        phone: form.phone,
         age: form.age ? parseInt(form.age) : null,
         experience_level: form.experience_level || null,
         waiver_agreed: form.waiver_agreed,
@@ -183,10 +184,11 @@ export default function RegisterPage() {
             <div className="form-group">
               <label>Division *</label>
               <select required value={form.division_id} onChange={e => set('division_id', e.target.value)}>
+                <option value="" disabled>Select a division</option>
                 {divisions.map(d => (
-                  <option key={d.id} value={d.id}>
+                  <option key={d.id} value={String(d.id)}>
                     {d.name}
-                    {d.weight_class_min && d.weight_class_max ? ` (${d.weight_class_min}-${d.weight_class_max} kg)` : ''}
+                    {d.weight_class_min && d.weight_class_max ? ` (${Math.round(d.weight_class_min * 2.20462)}-${Math.round(d.weight_class_max * 2.20462)} lbs)` : ''}
                     {d.gender ? ` - ${d.gender}` : ''}
                   </option>
                 ))}
@@ -194,10 +196,10 @@ export default function RegisterPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Declared Weight (kg)</label>
+                <label>Declared Weight (lbs)</label>
                 <input type="number" step="0.1" value={form.declared_weight}
                   onChange={e => set('declared_weight', e.target.value)}
-                  placeholder="e.g., 70.5" />
+                  placeholder="e.g., 155" />
               </div>
               <div className="form-group">
                 <label>Gym / Team</label>
@@ -207,9 +209,9 @@ export default function RegisterPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Phone</label>
-                <input value={form.phone} onChange={e => set('phone', e.target.value)}
-                  placeholder="Optional" maxLength={50} />
+                <label>Phone *</label>
+                <input required value={form.phone} onChange={e => set('phone', e.target.value)}
+                  placeholder="e.g., (555) 123-4567" maxLength={50} />
               </div>
               <div className="form-group">
                 <label>Age</label>
