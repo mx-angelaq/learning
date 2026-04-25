@@ -74,7 +74,7 @@ export default function TournamentView({ isAdmin, isStaff }) {
       {error && <div className="alert alert-error">{error}</div>}
 
       <div className="tabs">
-        {['divisions', ...(isAdmin ? ['registrations'] : []), 'schedule', 'audit'].map(t => (
+        {['divisions', ...(isAdmin ? ['registrations', 'settings'] : []), 'schedule', 'audit'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`}
             onClick={() => setTab(t)}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -128,6 +128,10 @@ export default function TournamentView({ isAdmin, isStaff }) {
 
       {tab === 'registrations' && isAdmin && (
         <RegistrationsTab tournamentId={id} tournament={tournament} onRefresh={load} />
+      )}
+
+      {tab === 'settings' && isAdmin && (
+        <SettingsTab tournament={tournament} onSaved={load} />
       )}
 
       {tab === 'schedule' && (
@@ -423,6 +427,146 @@ function RegistrationsTab({ tournamentId, tournament, onRefresh }) {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function SettingsTab({ tournament, onSaved }) {
+  const [form, setForm] = useState({
+    name: tournament.name,
+    date: tournament.date,
+    venue: tournament.venue,
+    num_rings: tournament.num_rings,
+    start_time: tournament.start_time,
+    bout_duration_minutes: tournament.bout_duration_minutes,
+    break_duration_minutes: tournament.break_duration_minutes,
+    buffer_minutes: tournament.buffer_minutes,
+    weighin_tolerance_kg: tournament.weighin_tolerance_kg,
+    substitution_cutoff_round: tournament.substitution_cutoff_round,
+    no_show_policy: tournament.no_show_policy,
+    registration_open: tournament.registration_open,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const set = (k, v) => { setForm({ ...form, [k]: v }); setSuccess(''); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setSaving(true);
+    try {
+      await api.updateTournament(tournament.id, form);
+      setSuccess('Settings saved.');
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3>Tournament Settings</h3>
+      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success">{success}</div>}
+
+      <form onSubmit={handleSubmit}>
+        <div className="card">
+          <h3>Registration</h3>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.registration_open}
+                onChange={e => set('registration_open', e.target.checked)} />
+              Open registrations (allow public self-registration)
+            </label>
+            <p className="text-sm text-light" style={{ marginTop: '0.25rem' }}>
+              {form.registration_open
+                ? 'Competitors can register via the public registration link.'
+                : 'Registration is closed. Competitors cannot self-register.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>General</h3>
+          <div className="form-group">
+            <label>Tournament Name</label>
+            <input required value={form.name} onChange={e => set('name', e.target.value)} />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Date</label>
+              <input type="date" required value={form.date} onChange={e => set('date', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Start Time</label>
+              <input type="time" value={form.start_time} onChange={e => set('start_time', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Venue</label>
+            <input required value={form.venue} onChange={e => set('venue', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Number of Rings</label>
+            <input type="number" min="1" max="20" value={form.num_rings}
+              onChange={e => set('num_rings', parseInt(e.target.value) || 1)} />
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Timing</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Bout Duration (min)</label>
+              <input type="number" min="1" max="30" value={form.bout_duration_minutes}
+                onChange={e => set('bout_duration_minutes', parseInt(e.target.value) || 3)} />
+            </div>
+            <div className="form-group">
+              <label>Break Between Bouts (min)</label>
+              <input type="number" min="0" max="30" value={form.break_duration_minutes}
+                onChange={e => set('break_duration_minutes', parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="form-group">
+              <label>Buffer (min)</label>
+              <input type="number" min="0" max="15" value={form.buffer_minutes}
+                onChange={e => set('buffer_minutes', parseInt(e.target.value) || 0)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Rules</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Weigh-in Tolerance (kg)</label>
+              <input type="number" step="0.1" min="0" value={form.weighin_tolerance_kg}
+                onChange={e => set('weighin_tolerance_kg', parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="form-group">
+              <label>Substitution Cutoff Round</label>
+              <input type="number" min="1" value={form.substitution_cutoff_round}
+                onChange={e => set('substitution_cutoff_round', parseInt(e.target.value) || 1)} />
+            </div>
+            <div className="form-group">
+              <label>No-Show Policy</label>
+              <select value={form.no_show_policy} onChange={e => set('no_show_policy', e.target.value)}>
+                <option value="walkover">Walkover</option>
+                <option value="dq">Disqualification</option>
+                <option value="reschedule">Reschedule</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
+          {saving ? 'Saving...' : 'Save Settings'}
+        </button>
+      </form>
     </div>
   );
 }
