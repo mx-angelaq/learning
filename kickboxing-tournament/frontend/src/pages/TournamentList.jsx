@@ -75,7 +75,7 @@ function CreateTournamentModal({ onClose, onCreated }) {
     name: '', date: '', venue: '', num_rings: 1,
     start_time: '09:00', bout_duration_minutes: 3,
     break_duration_minutes: 2, buffer_minutes: 1,
-    weighin_tolerance_kg: 0.5, substitution_cutoff_round: 1,
+    weighin_tolerance_lbs: 1.1, substitution_cutoff_round: 1,
     no_show_policy: 'walkover',
   });
   const [error, setError] = useState('');
@@ -84,7 +84,11 @@ function CreateTournamentModal({ onClose, onCreated }) {
     e.preventDefault();
     setError('');
     try {
-      const t = await api.createTournament(form);
+      const { weighin_tolerance_lbs, ...rest } = form;
+      const t = await api.createTournament({
+        ...rest,
+        weighin_tolerance_kg: Math.round(weighin_tolerance_lbs * 0.453592 * 10) / 10,
+      });
       onCreated(t);
     } catch (e) {
       setError(e.message);
@@ -143,9 +147,9 @@ function CreateTournamentModal({ onClose, onCreated }) {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Weigh-in Tolerance (kg)</label>
-              <input type="number" step="0.1" min="0" value={form.weighin_tolerance_kg}
-                onChange={e => set('weighin_tolerance_kg', parseFloat(e.target.value) || 0)} />
+              <label>Weigh-in Tolerance (lbs)</label>
+              <input type="number" step="0.1" min="0" value={form.weighin_tolerance_lbs}
+                onChange={e => set('weighin_tolerance_lbs', parseFloat(e.target.value) || 0)} />
             </div>
             <div className="form-group">
               <label>No-Show Policy</label>

@@ -101,8 +101,8 @@ export default function TournamentView({ isAdmin, isStaff }) {
                   <h3>{d.name}</h3>
                   <p className="text-sm text-light">
                     {d.weight_class_min && d.weight_class_max
-                      ? `${d.weight_class_min}-${d.weight_class_max} kg`
-                      : d.weight_class_max ? `Up to ${d.weight_class_max} kg` : d.weight_class_min ? `${d.weight_class_min}+ kg` : ''}
+                      ? `${Math.round(d.weight_class_min * 2.20462)}-${Math.round(d.weight_class_max * 2.20462)} lbs`
+                      : d.weight_class_max ? `Up to ${Math.round(d.weight_class_max * 2.20462)} lbs` : d.weight_class_min ? `${Math.round(d.weight_class_min * 2.20462)}+ lbs` : ''}
                     {d.gender ? ` | ${d.gender}` : ''}
                     {d.experience_level ? ` | ${d.experience_level}` : ''}
                   </p>
@@ -185,8 +185,8 @@ function AddDivisionModal({ tournamentId, onClose, onCreated }) {
     try {
       const data = {
         ...form,
-        weight_class_min: form.weight_class_min ? parseFloat(form.weight_class_min) : null,
-        weight_class_max: form.weight_class_max ? parseFloat(form.weight_class_max) : null,
+        weight_class_min: form.weight_class_min ? Math.round(parseFloat(form.weight_class_min) * 0.453592 * 10) / 10 : null,
+        weight_class_max: form.weight_class_max ? Math.round(parseFloat(form.weight_class_max) * 0.453592 * 10) / 10 : null,
         gender: form.gender || null,
         age_group: form.age_group || null,
         experience_level: form.experience_level || null,
@@ -213,12 +213,12 @@ function AddDivisionModal({ tournamentId, onClose, onCreated }) {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Min Weight (kg)</label>
+              <label>Min Weight (lbs)</label>
               <input type="number" step="0.1" value={form.weight_class_min}
                 onChange={e => set('weight_class_min', e.target.value)} />
             </div>
             <div className="form-group">
-              <label>Max Weight (kg)</label>
+              <label>Max Weight (lbs)</label>
               <input type="number" step="0.1" value={form.weight_class_max}
                 onChange={e => set('weight_class_max', e.target.value)} />
             </div>
@@ -441,7 +441,7 @@ function SettingsTab({ tournament, onSaved }) {
     bout_duration_minutes: tournament.bout_duration_minutes,
     break_duration_minutes: tournament.break_duration_minutes,
     buffer_minutes: tournament.buffer_minutes,
-    weighin_tolerance_kg: tournament.weighin_tolerance_kg,
+    weighin_tolerance_lbs: Math.round(tournament.weighin_tolerance_kg * 2.20462 * 10) / 10,
     substitution_cutoff_round: tournament.substitution_cutoff_round,
     no_show_policy: tournament.no_show_policy,
     registration_open: tournament.registration_open,
@@ -458,7 +458,11 @@ function SettingsTab({ tournament, onSaved }) {
     setSuccess('');
     setSaving(true);
     try {
-      await api.updateTournament(tournament.id, form);
+      const { weighin_tolerance_lbs, ...rest } = form;
+      await api.updateTournament(tournament.id, {
+        ...rest,
+        weighin_tolerance_kg: Math.round(weighin_tolerance_lbs * 0.453592 * 10) / 10,
+      });
       setSuccess('Settings saved.');
       onSaved();
     } catch (e) {
@@ -543,9 +547,9 @@ function SettingsTab({ tournament, onSaved }) {
           <h3>Rules</h3>
           <div className="form-row">
             <div className="form-group">
-              <label>Weigh-in Tolerance (kg)</label>
-              <input type="number" step="0.1" min="0" value={form.weighin_tolerance_kg}
-                onChange={e => set('weighin_tolerance_kg', parseFloat(e.target.value) || 0)} />
+              <label>Weigh-in Tolerance (lbs)</label>
+              <input type="number" step="0.1" min="0" value={form.weighin_tolerance_lbs}
+                onChange={e => set('weighin_tolerance_lbs', parseFloat(e.target.value) || 0)} />
             </div>
             <div className="form-group">
               <label>Substitution Cutoff Round</label>
