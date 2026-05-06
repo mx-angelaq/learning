@@ -101,8 +101,8 @@ export default function TournamentView({ isAdmin, isStaff }) {
                   <h3>{d.name}</h3>
                   <p className="text-sm text-light">
                     {d.weight_class_min && d.weight_class_max
-                      ? `${Math.round(d.weight_class_min * 2.20462)}-${Math.round(d.weight_class_max * 2.20462)} lbs`
-                      : d.weight_class_max ? `Up to ${Math.round(d.weight_class_max * 2.20462)} lbs` : d.weight_class_min ? `${Math.round(d.weight_class_min * 2.20462)}+ lbs` : ''}
+                      ? `${Math.round(d.weight_class_min)}-${Math.round(d.weight_class_max)} lbs`
+                      : d.weight_class_max ? `Up to ${Math.round(d.weight_class_max)} lbs` : d.weight_class_min ? `${Math.round(d.weight_class_min)}+ lbs` : ''}
                     {d.gender ? ` | ${d.gender}` : ''}
                     {d.experience_level ? ` | ${d.experience_level}` : ''}
                   </p>
@@ -185,8 +185,8 @@ function AddDivisionModal({ tournamentId, onClose, onCreated }) {
     try {
       const data = {
         ...form,
-        weight_class_min: form.weight_class_min ? Math.round(parseFloat(form.weight_class_min) * 0.453592 * 10) / 10 : null,
-        weight_class_max: form.weight_class_max ? Math.round(parseFloat(form.weight_class_max) * 0.453592 * 10) / 10 : null,
+        weight_class_min: form.weight_class_min ? Math.round(parseFloat(form.weight_class_min) * 10) / 10 : null,
+        weight_class_max: form.weight_class_max ? Math.round(parseFloat(form.weight_class_max) * 10) / 10 : null,
         gender: form.gender || null,
         age_group: form.age_group || null,
         experience_level: form.experience_level || null,
@@ -399,7 +399,7 @@ function RegistrationsTab({ tournamentId, tournament, onRefresh }) {
                   <td>{r.full_name}</td>
                   <td className="text-sm">{r.email}</td>
                   <td>{r.division_name || `Division #${r.division_id}`}</td>
-                  <td>{r.declared_weight ? `${Math.round(r.declared_weight * 2.20462)} lbs` : '-'}</td>
+                  <td>{r.declared_weight ? `${Math.round(r.declared_weight)} lbs` : '-'}</td>
                   <td>{r.gym_team || '-'}</td>
                   <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
                   <td className="text-sm">{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>
@@ -441,7 +441,7 @@ function SettingsTab({ tournament, onSaved }) {
     bout_duration_minutes: tournament.bout_duration_minutes,
     break_duration_minutes: tournament.break_duration_minutes,
     buffer_minutes: tournament.buffer_minutes,
-    weighin_tolerance_lbs: Math.round(tournament.weighin_tolerance_kg * 2.20462 * 10) / 10,
+    weighin_tolerance_lbs: tournament.weighin_tolerance_lbs,
     substitution_cutoff_round: tournament.substitution_cutoff_round,
     no_show_policy: tournament.no_show_policy,
     registration_open: tournament.registration_open,
@@ -458,10 +458,9 @@ function SettingsTab({ tournament, onSaved }) {
     setSuccess('');
     setSaving(true);
     try {
-      const { weighin_tolerance_lbs, ...rest } = form;
       await api.updateTournament(tournament.id, {
-        ...rest,
-        weighin_tolerance_kg: Math.round(weighin_tolerance_lbs * 0.453592 * 10) / 10,
+        ...form,
+        weighin_tolerance_lbs: Math.round(form.weighin_tolerance_lbs * 10) / 10,
       });
       setSuccess('Settings saved.');
       onSaved();

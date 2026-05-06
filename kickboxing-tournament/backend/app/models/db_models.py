@@ -62,7 +62,7 @@ class Tournament(Base):
     bout_duration_minutes = Column(Integer, default=3)
     break_duration_minutes = Column(Integer, default=2)
     buffer_minutes = Column(Integer, default=1)
-    weighin_tolerance_kg = Column(Float, default=0.5)
+    weighin_tolerance_lbs = Column(Float, default=1.1)
     substitution_cutoff_round = Column(Integer, default=1)  # After this round, no subs
     no_show_policy = Column(Enum(NoShowPolicy), default=NoShowPolicy.WALKOVER)
     weight_presets = Column(JSON, nullable=True)  # Custom weight class presets
@@ -156,10 +156,12 @@ class Registration(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     tournament_id = Column(Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=False)
-    division_id = Column(Integer, ForeignKey("divisions.id", ondelete="CASCADE"), nullable=False)
+    # division_id is auto-assigned from declared_weight; nullable so a registration
+    # can be saved even if no matching division exists yet.
+    division_id = Column(Integer, ForeignKey("divisions.id", ondelete="SET NULL"), nullable=True)
     full_name = Column(String(200), nullable=False)
     email = Column(String(200), nullable=False)
-    declared_weight = Column(Float, nullable=True)
+    declared_weight = Column(Float, nullable=False)
     gym_team = Column(String(200), nullable=True)
     phone = Column(String(50), nullable=True)
     age = Column(Integer, nullable=True)

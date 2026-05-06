@@ -8,18 +8,7 @@ from app.database import get_db
 from app.auth import require_admin, get_current_role
 from app.models.db_models import Tournament
 from app.models.schemas import TournamentCreate, TournamentUpdate, TournamentResponse
-
-DEFAULT_WEIGHT_PRESETS = [
-    {"name": "Strawweight", "min_kg": None, "max_kg": 52.2},
-    {"name": "Flyweight", "min_kg": 52.2, "max_kg": 56.7},
-    {"name": "Bantamweight", "min_kg": 56.7, "max_kg": 61.2},
-    {"name": "Featherweight", "min_kg": 61.2, "max_kg": 65.8},
-    {"name": "Lightweight", "min_kg": 65.8, "max_kg": 70.3},
-    {"name": "Welterweight", "min_kg": 70.3, "max_kg": 77.1},
-    {"name": "Middleweight", "min_kg": 77.1, "max_kg": 83.9},
-    {"name": "Light Heavyweight", "min_kg": 83.9, "max_kg": 93.0},
-    {"name": "Heavyweight", "min_kg": 93.0, "max_kg": None},
-]
+from app.services.divisions import DEFAULT_WEIGHT_PRESETS_LBS as DEFAULT_WEIGHT_PRESETS
 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
@@ -49,7 +38,7 @@ def create_tournament(data: TournamentCreate, db: Session = Depends(get_db),
         bout_duration_minutes=data.bout_duration_minutes,
         break_duration_minutes=data.break_duration_minutes,
         buffer_minutes=data.buffer_minutes,
-        weighin_tolerance_kg=data.weighin_tolerance_kg,
+        weighin_tolerance_lbs=data.weighin_tolerance_lbs,
         substitution_cutoff_round=data.substitution_cutoff_round,
         no_show_policy=data.no_show_policy,
         weight_presets=([p.model_dump() for p in data.weight_presets]

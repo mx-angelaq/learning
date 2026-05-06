@@ -84,10 +84,9 @@ function CreateTournamentModal({ onClose, onCreated }) {
     e.preventDefault();
     setError('');
     try {
-      const { weighin_tolerance_lbs, ...rest } = form;
       const t = await api.createTournament({
-        ...rest,
-        weighin_tolerance_kg: Math.round(weighin_tolerance_lbs * 0.453592 * 10) / 10,
+        ...form,
+        weighin_tolerance_lbs: Math.round(form.weighin_tolerance_lbs * 10) / 10,
       });
       onCreated(t);
     } catch (e) {

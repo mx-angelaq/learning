@@ -65,7 +65,7 @@ export default function DivisionView({ isAdmin, isStaff }) {
           <Link to={`/tournament/${tid}`} className="text-sm text-light">&larr; Back to Tournament</Link>
           <h2>{division.name}</h2>
           <p className="text-sm text-light">
-            {division.weight_class_min ? Math.round(division.weight_class_min * 2.20462) : '?'}-{division.weight_class_max ? Math.round(division.weight_class_max * 2.20462) : '?'} lbs
+            {division.weight_class_min ? Math.round(division.weight_class_min) : '?'}-{division.weight_class_max ? Math.round(division.weight_class_max) : '?'} lbs
             {division.gender ? ` | ${division.gender}` : ''}
             &middot; {competitors.filter(c => c.status === 'active').length} active competitor(s)
           </p>
@@ -144,7 +144,7 @@ function CompetitorsTab({ tid, did, competitors, isAdmin, division, onRefresh,
       const weightLbs = form.declared_weight ? parseFloat(form.declared_weight) : null;
       await api.createCompetitor(tid, did, {
         full_name: form.full_name,
-        declared_weight: weightLbs ? Math.round(weightLbs * 0.453592 * 10) / 10 : null,
+        declared_weight: weightLbs ? Math.round(weightLbs * 10) / 10 : null,
         gym_team: form.gym_team || null,
         waiver_signed: true,
       });
@@ -205,7 +205,7 @@ function CompetitorsTab({ tid, did, competitors, isAdmin, division, onRefresh,
             {competitors.map(c => (
               <tr key={c.id}>
                 <td>{c.full_name}</td>
-                <td>{c.declared_weight ? `${Math.round(c.declared_weight * 2.20462)} lbs` : '-'}</td>
+                <td>{c.declared_weight ? `${Math.round(c.declared_weight)} lbs` : '-'}</td>
                 <td>{c.gym_team || '-'}</td>
                 <td>{c.seed || '-'}</td>
                 <td><span className={`badge badge-${c.status}`}>{c.status}</span></td>

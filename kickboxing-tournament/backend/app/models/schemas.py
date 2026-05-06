@@ -21,8 +21,8 @@ class TokenResponse(BaseModel):
 
 class WeightPreset(BaseModel):
     name: str
-    min_kg: Optional[float] = None
-    max_kg: Optional[float] = None
+    min_lbs: Optional[float] = None
+    max_lbs: Optional[float] = None
 
 
 class TournamentCreate(BaseModel):
@@ -34,7 +34,7 @@ class TournamentCreate(BaseModel):
     bout_duration_minutes: int = Field(ge=1, le=30, default=3)
     break_duration_minutes: int = Field(ge=0, le=30, default=2)
     buffer_minutes: int = Field(ge=0, le=15, default=1)
-    weighin_tolerance_kg: float = Field(ge=0, le=5, default=0.5)
+    weighin_tolerance_lbs: float = Field(ge=0, le=11, default=1.1)
     substitution_cutoff_round: int = Field(ge=1, default=1)
     no_show_policy: str = Field(default="walkover")
     weight_presets: Optional[List[WeightPreset]] = None
@@ -50,7 +50,7 @@ class TournamentUpdate(BaseModel):
     bout_duration_minutes: Optional[int] = None
     break_duration_minutes: Optional[int] = None
     buffer_minutes: Optional[int] = None
-    weighin_tolerance_kg: Optional[float] = None
+    weighin_tolerance_lbs: Optional[float] = None
     substitution_cutoff_round: Optional[int] = None
     no_show_policy: Optional[str] = None
     weight_presets: Optional[List[WeightPreset]] = None
@@ -67,7 +67,7 @@ class TournamentResponse(BaseModel):
     bout_duration_minutes: int
     break_duration_minutes: int
     buffer_minutes: int
-    weighin_tolerance_kg: float
+    weighin_tolerance_lbs: float
     substitution_cutoff_round: int
     no_show_policy: str
     weight_presets: Optional[list] = None
@@ -271,11 +271,14 @@ class SyncStatusResponse(BaseModel):
 # --- Registration (self-signup) ---
 
 class RegistrationSubmit(BaseModel):
-    """Public-facing registration form submission."""
+    """Public-facing registration form submission.
+
+    Weight is in pounds (lbs); division is auto-assigned by the system based
+    on the entered weight, so the form does NOT include a division field.
+    """
     full_name: str = Field(min_length=1, max_length=200)
     email: str = Field(min_length=3, max_length=200)
-    division_id: int
-    declared_weight: Optional[float] = None
+    declared_weight: float = Field(gt=0, le=1000, description="Competitor weight in pounds (lbs)")
     gym_team: Optional[str] = Field(default=None, max_length=200)
     phone: str = Field(min_length=1, max_length=50)
     age: Optional[int] = Field(default=None, ge=5, le=99)
@@ -301,7 +304,7 @@ class RegistrationSubmit(BaseModel):
 class RegistrationResponse(BaseModel):
     id: int
     tournament_id: int
-    division_id: int
+    division_id: Optional[int] = None
     full_name: str
     email: str
     declared_weight: Optional[float] = None
