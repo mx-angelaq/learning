@@ -14,6 +14,7 @@ from app.models.db_models import (
 from app.models.schemas import (
     RegistrationSubmit, RegistrationResponse, RegistrationReview
 )
+from app.services.divisions import assign_division
 
 router = APIRouter(prefix="/api/tournaments/{tournament_id}/registrations", tags=["registrations"])
 
@@ -43,7 +44,7 @@ def _send_discord_webhook(registration: Registration, tournament: Tournament, di
                     {"name": "Division", "value": division_name, "inline": True},
                     {"name": "Email", "value": registration.email, "inline": True},
                     {"name": "Gym/Team", "value": registration.gym_team or "N/A", "inline": True},
-                    {"name": "Weight", "value": f"{round(registration.declared_weight * 2.20462)} lbs" if registration.declared_weight else "N/A", "inline": True},
+                    {"name": "Weight", "value": f"{round(registration.declared_weight)} lbs" if registration.declared_weight else "N/A", "inline": True},
                     {"name": "Tournament", "value": tournament.name, "inline": False},
                 ],
                 "footer": {"text": f"Registration #{registration.id} - Pending review"},
@@ -67,16 +68,17 @@ def submit_registration(tournament_id: int, data: RegistrationSubmit,
     if not tournament.registration_open:
         raise HTTPException(400, "Registration is not currently open for this tournament.")
 
-    # Validate division belongs to this tournament
-    division = db.query(Division).filter(
-        Division.id == data.division_id,
-        Division.tournament_id == tournament_id,
-    ).first()
-    if not division:
-        raise HTTPException(400, "Selected division does not exist in this tournament.")
-
     if not data.waiver_agreed:
         raise HTTPException(400, "You must agree to the waiver to register.")
+
+    # Auto-assign division based on declared weight (lbs).
+    division = assign_division(db, tournament_id, data.declared_weight)
+    if not division:
+        raise HTTPException(
+            400,
+            f"No division matches a weight of {data.declared_weight} lbs in this tournament. "
+            "Contact the organizer to add a matching weight class."
+        )
 
     # Duplicate check: same email + same tournament
     existing = db.query(Registration).filter(
@@ -94,7 +96,7 @@ def submit_registration(tournament_id: int, data: RegistrationSubmit,
 
     reg = Registration(
         tournament_id=tournament_id,
-        division_id=data.division_id,
+        division_id=division.id,
         full_name=data.full_name,
         email=data.email,
         declared_weight=data.declared_weight,
@@ -184,13 +186,19 @@ def review_registration(tournament_id: int, registration_id: int,
 
         return _registration_to_response(reg, db)
 
-    # --- Approve: create a Competitor via the same path admin uses ---
-    division = db.query(Division).filter(Division.id == reg.division_id).first()
+    # --- Approve: re-run division auto-assignment from the stored lbs weight,
+    # then create a Competitor in that division.
+    division = assign_division(db, tournament_id, reg.declared_weight)
     if not division:
-        raise HTTPException(400, "Division no longer exists. Cannot approve.")
+        raise HTTPException(
+            400,
+            f"No division matches a weight of {reg.declared_weight} lbs. "
+            "Add a matching weight class before approving."
+        )
+    reg.division_id = division.id
 
     comp = Competitor(
-        division_id=reg.division_id,
+        division_id=division.id,
         full_name=reg.full_name,
         declared_weight=reg.declared_weight,
         gym_team=reg.gym_team,

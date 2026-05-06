@@ -47,7 +47,7 @@ export default function MatchActions({ match, tid, did, isAdmin, isStaff,
           if (!subName.trim()) { setError('Substitute name is required.'); return; }
           await api.substitution(tid, did, match.id, parseInt(targetCompetitor), {
             full_name: subName,
-            declared_weight: subWeight ? Math.round(parseFloat(subWeight) * 0.453592 * 10) / 10 : null,
+            declared_weight: subWeight ? Math.round(parseFloat(subWeight) * 10) / 10 : null,
             gym_team: subGym || null,
           }, reason);
           setSuccess('Substitution complete.');
