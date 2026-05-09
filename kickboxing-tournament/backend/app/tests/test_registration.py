@@ -52,21 +52,25 @@ def _create_tournament(client, token, registration_open=True):
     return resp.json()["id"]
 
 
-def _create_division(client, token, tid):
-    """Helper: create a division."""
+def _create_division(client, token, tid, name="Lightweight",
+                     weight_class_min=125, weight_class_max=155):
+    """Helper: create a division (weights are pounds)."""
     resp = client.post(f"/api/tournaments/{tid}/divisions", json={
-        "name": "Lightweight", "weight_class_min": 57, "weight_class_max": 70,
+        "name": name,
+        "weight_class_min": weight_class_min,
+        "weight_class_max": weight_class_max,
     }, headers=auth_header(token))
     return resp.json()["id"]
 
 
-def _valid_registration(division_id):
+def _valid_registration(division_id=None):
+    """A registration payload. division_id is ignored (kept for legacy callers)."""
     return {
         "full_name": "Jane Fighter",
         "email": "jane@example.com",
-        "division_id": division_id,
-        "declared_weight": 68.5,
+        "declared_weight": 150.0,
         "gym_team": "Iron Fist MMA",
+        "phone": "555-123-4567",
         "waiver_agreed": True,
     }
 
@@ -90,28 +94,28 @@ class TestRegistrationSubmission:
 
     def test_registration_with_minimal_fields(self, client, admin_token):
         tid = _create_tournament(client, admin_token)
-        did = _create_division(client, admin_token, tid)
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "Min Fighter",
             "email": "min@example.com",
-            "division_id": did,
+            "declared_weight": 150.0,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["declared_weight"] is None
+        assert data["declared_weight"] == 150.0
         assert data["gym_team"] is None
 
     def test_registration_with_all_fields(self, client, admin_token):
         tid = _create_tournament(client, admin_token)
-        did = _create_division(client, admin_token, tid)
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "Full Fighter",
             "email": "full@example.com",
-            "division_id": did,
-            "declared_weight": 69.0,
+            "declared_weight": 152.0,
             "gym_team": "Power Gym",
             "phone": "+1234567890",
             "age": 25,
@@ -129,58 +133,91 @@ class TestRegistrationValidation:
 
     def test_missing_name(self, client, admin_token):
         tid = _create_tournament(client, admin_token)
-        did = _create_division(client, admin_token, tid)
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "",
             "email": "test@example.com",
-            "division_id": did,
+            "declared_weight": 150.0,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 422
 
     def test_invalid_email(self, client, admin_token):
         tid = _create_tournament(client, admin_token)
-        did = _create_division(client, admin_token, tid)
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "Test",
             "email": "not-an-email",
-            "division_id": did,
+            "declared_weight": 150.0,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 422
 
     def test_waiver_not_agreed(self, client, admin_token):
         tid = _create_tournament(client, admin_token)
-        did = _create_division(client, admin_token, tid)
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "Test Fighter",
             "email": "test@example.com",
-            "division_id": did,
+            "declared_weight": 150.0,
+            "phone": "555-0000",
             "waiver_agreed": False,
         })
         assert resp.status_code == 400
         assert "waiver" in resp.json()["detail"].lower()
 
-    def test_invalid_division(self, client, admin_token):
+    def test_no_matching_division(self, client, admin_token):
+        """Weight that falls outside any defined division is rejected."""
         tid = _create_tournament(client, admin_token)
+        # Only a 125-155 lb division.
+        _create_division(client, admin_token, tid)
 
         resp = client.post(f"/api/tournaments/{tid}/registrations", json={
             "full_name": "Test Fighter",
             "email": "test@example.com",
-            "division_id": 99999,
+            "declared_weight": 250.0,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 400
         assert "division" in resp.json()["detail"].lower()
 
+    def test_missing_phone(self, client, admin_token):
+        tid = _create_tournament(client, admin_token)
+        _create_division(client, admin_token, tid)
+
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json={
+            "full_name": "Test Fighter",
+            "email": "test@example.com",
+            "declared_weight": 150.0,
+            "waiver_agreed": True,
+        })
+        assert resp.status_code == 422
+
+    def test_missing_weight(self, client, admin_token):
+        """Weight (lbs) is required for division auto-assignment."""
+        tid = _create_tournament(client, admin_token)
+        _create_division(client, admin_token, tid)
+
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json={
+            "full_name": "Test Fighter",
+            "email": "test@example.com",
+            "phone": "555-0000",
+            "waiver_agreed": True,
+        })
+        assert resp.status_code == 422
+
     def test_nonexistent_tournament(self, client):
         resp = client.post("/api/tournaments/99999/registrations", json={
             "full_name": "Test",
             "email": "test@example.com",
-            "division_id": 1,
+            "declared_weight": 150.0,
+            "phone": "555-0000",
             "waiver_agreed": True,
         })
         assert resp.status_code == 404
@@ -283,7 +320,7 @@ class TestAdminApproval:
         # Verify the competitor has correct data
         comp = next(c for c in comps if c["full_name"] == "Jane Fighter")
         assert comp["email"] == "jane@example.com"
-        assert comp["declared_weight"] == 68.5
+        assert comp["declared_weight"] == 150.0
         assert comp["gym_team"] == "Iron Fist MMA"
         assert comp["status"] == "active"
 
@@ -411,6 +448,116 @@ class TestStatusCheck:
 
         resp = client.get(f"/api/tournaments/{tid}/registrations/check?email=JANE@example.com")
         assert resp.status_code == 200
+
+
+class TestDivisionAutoAssignment:
+    """Verify the registration form auto-assigns the division from the lbs weight."""
+
+    def test_weight_inside_range_assigned(self, client, admin_token):
+        tid = _create_tournament(client, admin_token)
+        # Lightweight: (125, 155]
+        light_id = _create_division(client, admin_token, tid, "Lightweight", 125, 155)
+        _create_division(client, admin_token, tid, "Welterweight", 155, 170)
+
+        reg = _valid_registration()
+        reg["declared_weight"] = 150.0
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json=reg)
+        assert resp.status_code == 200
+        assert resp.json()["division_id"] == light_id
+        assert resp.json()["division_name"] == "Lightweight"
+
+    def test_weight_at_upper_boundary_assigned_lower_division(self, client, admin_token):
+        """Boundary convention: upper bound is inclusive — 155.0 lbs is Lightweight."""
+        tid = _create_tournament(client, admin_token)
+        light_id = _create_division(client, admin_token, tid, "Lightweight", 125, 155)
+        _create_division(client, admin_token, tid, "Welterweight", 155, 170)
+
+        reg = _valid_registration()
+        reg["email"] = "boundary@example.com"
+        reg["declared_weight"] = 155.0
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json=reg)
+        assert resp.status_code == 200
+        assert resp.json()["division_id"] == light_id
+
+    def test_weight_just_above_boundary_assigned_higher_division(self, client, admin_token):
+        """155.1 lbs is in Welterweight (lower bound is exclusive)."""
+        tid = _create_tournament(client, admin_token)
+        _create_division(client, admin_token, tid, "Lightweight", 125, 155)
+        welter_id = _create_division(client, admin_token, tid, "Welterweight", 155, 170)
+
+        reg = _valid_registration()
+        reg["email"] = "just-over@example.com"
+        reg["declared_weight"] = 155.1
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json=reg)
+        assert resp.status_code == 200
+        assert resp.json()["division_id"] == welter_id
+
+    def test_weight_just_below_boundary_assigned_lower_division(self, client, admin_token):
+        """154.9 lbs is still Lightweight."""
+        tid = _create_tournament(client, admin_token)
+        light_id = _create_division(client, admin_token, tid, "Lightweight", 125, 155)
+        _create_division(client, admin_token, tid, "Welterweight", 155, 170)
+
+        reg = _valid_registration()
+        reg["email"] = "just-under@example.com"
+        reg["declared_weight"] = 154.9
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json=reg)
+        assert resp.status_code == 200
+        assert resp.json()["division_id"] == light_id
+
+    def test_open_top_division_matches_anyone_above_min(self, client, admin_token):
+        tid = _create_tournament(client, admin_token)
+        heavy_id = _create_division(client, admin_token, tid, "Heavyweight", 205, None)
+
+        reg = _valid_registration()
+        reg["email"] = "heavy@example.com"
+        reg["declared_weight"] = 280.0
+        resp = client.post(f"/api/tournaments/{tid}/registrations", json=reg)
+        assert resp.status_code == 200
+        assert resp.json()["division_id"] == heavy_id
+
+
+class TestBracketGenerationGroupsByDivision:
+    """End-to-end: registrations -> approval auto-creates competitor in the
+    auto-assigned division -> bracket generation groups them correctly."""
+
+    def test_auto_assigned_competitors_in_correct_brackets(self, client, admin_token):
+        tid = _create_tournament(client, admin_token)
+        light_id = _create_division(client, admin_token, tid, "Lightweight", 125, 155)
+        welter_id = _create_division(client, admin_token, tid, "Welterweight", 155, 170)
+
+        # Two lightweights, two welterweights — none pick a division.
+        weights = [
+            ("a@x.com", 140.0, "A", light_id),
+            ("b@x.com", 150.0, "B", light_id),
+            ("c@x.com", 160.0, "C", welter_id),
+            ("d@x.com", 168.0, "D", welter_id),
+        ]
+        for email, w, name, expected_div in weights:
+            r = client.post(f"/api/tournaments/{tid}/registrations", json={
+                "full_name": name, "email": email, "declared_weight": w,
+                "phone": "555", "waiver_agreed": True,
+            })
+            assert r.status_code == 200
+            assert r.json()["division_id"] == expected_div
+            rid = r.json()["id"]
+            client.post(f"/api/tournaments/{tid}/registrations/{rid}/review",
+                        json={"action": "approve"}, headers=auth_header(admin_token))
+
+        light = client.get(f"/api/tournaments/{tid}/divisions/{light_id}/competitors").json()
+        welter = client.get(f"/api/tournaments/{tid}/divisions/{welter_id}/competitors").json()
+        assert {c["full_name"] for c in light} == {"A", "B"}
+        assert {c["full_name"] for c in welter} == {"C", "D"}
+
+        # Generate brackets per division and confirm each pulls only its own competitors.
+        for div_id, expected in [(light_id, {"A", "B"}), (welter_id, {"C", "D"})]:
+            bracket = client.post(
+                f"/api/tournaments/{tid}/divisions/{div_id}/bracket",
+                json={"seeding": "random"}, headers=auth_header(admin_token),
+            ).json()
+            names = {m["competitor1_name"] for m in bracket if m["competitor1_name"]} | \
+                    {m["competitor2_name"] for m in bracket if m["competitor2_name"]}
+            assert names == expected
 
 
 class TestAdminListRegistrations:
