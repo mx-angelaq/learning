@@ -20,11 +20,21 @@ app = FastAPI(
 )
 
 # CORS
-origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"]
+# `allow_credentials=True` combined with `allow_origins=["*"]` is invalid per
+# the CORS spec and silently rejected by browsers, so when the wildcard is in
+# effect we drop credentials. The regex covers Vercel preview/production URLs
+# whose hostnames change per-deploy.
+if settings.CORS_ORIGINS == "*":
+    cors_origins = ["*"]
+    cors_credentials = False
+else:
+    cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    cors_credentials = True
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
+    allow_credentials=cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
