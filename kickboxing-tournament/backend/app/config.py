@@ -27,7 +27,15 @@ class Settings(BaseSettings):
     SYNC_API_KEY: str = os.getenv("SYNC_API_KEY", "")
 
     # CORS
+    # Comma-separated list of allowed origins, or "*" for all (dev only).
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    # Regex allowlist applied in addition to CORS_ORIGINS. Default matches any
+    # Vercel preview/production domain so frontend deploys don't require an
+    # env-var update on every push.
+    CORS_ORIGIN_REGEX: str = os.getenv(
+        "CORS_ORIGIN_REGEX",
+        r"https://.*\.vercel\.app",
+    )
 
     class Config:
         env_file = ".env"
