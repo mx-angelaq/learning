@@ -36,6 +36,12 @@ def get_db():
 
 
 def init_db():
-    """Create all tables."""
+    """Create all tables, then run any pending data migrations."""
     from app.models import db_models  # noqa: F401
+    from app.migrations.kg_to_lbs import migrate as migrate_kg_to_lbs
+
+    # Self-heal kg-era databases before create_all, so an ALTER COLUMN runs
+    # against the existing schema. create_all is a no-op for already-existing
+    # tables, so order only matters when columns differ.
+    migrate_kg_to_lbs(engine)
     Base.metadata.create_all(bind=engine)
